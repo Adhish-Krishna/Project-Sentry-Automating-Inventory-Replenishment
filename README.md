@@ -35,17 +35,38 @@ The system follows an event-driven microservices architecture using Apache Kafka
 - Docker & Docker Compose
 - npm or yarn
 
-### 1. Start the services using Docker
+### Option 1: Running Everything in Docker (Recommended)
+
+#### 1. Start all services using Docker Compose
 ```bash
+# Build all services
+docker-compose build
+
+# Start all the services
 docker-compose up -d
+
+# Check if services are running
+docker-compose ps
+
+# View logs
+docker-compose logs -f backend
 ```
 
-### 2. Setup and run the backend
+**Note**: The application will run on `http://localhost:3003`
+
+### Option 2: Running Backend Locally (Development)
+
+#### 1. Start only MongoDB and Kafka in Docker
+```bash
+docker-compose up mongo broker -d
+```
+
+#### 2. Setup and run the backend locally
 ```bash
 # Install dependencies
 npm install
 
-# Setup environment variables
+# Setup environment variables for local development
 cp .env.template .env
 
 # Start the development server
@@ -113,4 +134,5 @@ curl -X POST http://localhost:3003/api/warehouse/additems \
 -H "Content-Type: application/json" \
 -d '{"items":[{"item_name":"Zara Oversized Blazer","quantity":150,"price":79,"description":"Black oversized blazer with shoulder pads"},{"item_name":"H&M Skinny Jeans","quantity":200,"price":29,"description":"High-waisted skinny fit denim jeans"},{"item_name":"Forever 21 Crop Top","quantity":180,"price":12,"description":"Basic cotton crop top in various colors"},{"item_name":"Shein Maxi Dress","quantity":120,"price":24,"description":"Floral print summer maxi dress"},{"item_name":"Urban Outfitters Mom Jeans","quantity":100,"price":69,"description":"Vintage-style high-waisted mom jeans"}]}'
 ```
+
 

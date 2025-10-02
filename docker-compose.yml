@@ -1,19 +1,59 @@
 services:
+  backend:
+    build:
+      context: .
+    ports:
+      - 3003:3003
+    environment:
+      PORT: 3003
+      MONGO_URI: mongodb://mongo:27017/
+      KAFKA_URI: broker:9092
+    depends_on:
+      broker:
+        condition: service_started
+      mongo:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - app-network
   mongo:
     image: mongo:latest
     container_name: inventory-mongo
     ports:
-      - "27017:27017"
+      - 27017:27017
     environment:
       MONGO_INITDB_DATABASE: inventory-replenishment
     volumes:
       - mongo_data:/data/db
-  kafka:
-    image: apache/kafka:4.1.0
-    container_name: inventory-kafka
+    restart: unless-stopped
+    networks:
+      - app-network
+  broker:
+    image: apache/kafka:latest
+    container_name: broker
     ports:
-      - "9092:9092"
+      - 9092:9092
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    restart: unless-stopped
+    networks:
+      - app-network
 
-# Named volumes for data persistence
+networks:
+  app-network:
+    driver: bridge
+
 volumes:
   mongo_data:
