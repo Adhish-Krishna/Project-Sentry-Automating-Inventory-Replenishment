@@ -35,4 +35,12 @@ export interface AddItemsBody{
     items: WarehouseItems[]
 }
 
+export enum Topics{
+    "api2"="transfer_order",
+    "api3"="shipment",
+    "api4"="delivery"
+}
+
+
+
 

@@ -1,0 +1,19 @@
+services:
+  mongo:
+    image: mongo:latest
+    container_name: inventory-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: inventory-replenishment
+    volumes:
+      - mongo_data:/data/db
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: inventory-kafka
+    ports:
+      - "9092:9092"
+
+# Named volumes for data persistence
+volumes:
+  mongo_data:

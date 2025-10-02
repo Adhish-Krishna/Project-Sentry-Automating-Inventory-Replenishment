@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import replenishmentRouter from './routes/replenishmentRoutes.js';
 import warehouseRouter from './routes/warehouseRoutes.js';
+import { initializeConsumers } from './consumer/index.js';
 
 dotenv.config();
 
@@ -25,6 +26,8 @@ async function runWithDB() {
     await connectDB();
     app.use("/api/warehouse", warehouseRouter);
     app.use("/api/replenishment", replenishmentRouter);
+    // Initialize Kafka consumers after routes are set up
+    await initializeConsumers();
 }
 
 runWithDB();

@@ -2,13 +2,15 @@ import type {Request, Response} from 'express';
 import replenishmentModel from '../models/replenishment.js';
 import warehouseModel from '../models/warehouse.js';
 import type { AlertBody, ConfirmOderBody, OrderCreationBody, RequiredItem} from '../types/types.js';
-import { order_status } from '../types/types.js';
+import { order_status, Topics } from '../types/types.js';
 import mongoose from 'mongoose';
+import createProducer from '../producer/producer.js';
+import { Buffer } from 'buffer';
 
 const raiseAlert = async (req: Request, res: Response): Promise<void> =>{
     try{
         const {store_id, required_items} = req.body as AlertBody;
-        if(!store_id && !required_items){
+        if(!store_id || !required_items){
             res.status(400).json({"error":"Shop ID and Required Items required"});
             return;
         }
@@ -18,6 +20,18 @@ const raiseAlert = async (req: Request, res: Response): Promise<void> =>{
                 required_items: required_items
             }
         );
+        const messageData = {
+            replenishment_id: replenishment._id,
+            store_id: store_id,
+            required_items: required_items
+        }
+        
+        await createProducer(Topics.api2, [
+            {
+                value: Buffer.from(JSON.stringify(messageData))
+            }
+        ]);
+        
         res.status(201).json(
             {
                 "status": order_status.ALERT_RAISED,
@@ -36,26 +50,28 @@ const raiseAlert = async (req: Request, res: Response): Promise<void> =>{
 const createOrder = async (req: Request, res: Response): Promise<void> =>{
     try{
         const {replenishment_id, store_id, required_items} = req.body as OrderCreationBody;
-        if(!store_id && !required_items && !replenishment_id){
+        if(!store_id || !required_items || !replenishment_id){
             res.status(400).json({"error":"Replenishment ID, Shop ID and Required Items are  required"});
             return;
         }
         let available_item_ids: RequiredItem[] = [];
         let unavailable_items: string[] = [];
-        required_items.map(async (item) => {
+        
+        for (const item of required_items) {
             const item_in_warehouse = await warehouseModel.findOne({
                 _id: item.item_id
             });
-            if(item_in_warehouse!.quantity >= item.quantity){
+            if(item_in_warehouse && item_in_warehouse.quantity >= item.quantity){
                 available_item_ids.push({item_id: item.item_id, quantity: item.quantity});
-            }
-            else{
+            } else {
                 unavailable_items.push(item.item_id);
             }
-        });
-        if(unavailable_items.length >0){
-            res.json({
-                "message":"Some items are not available in the warehouse. So cannot proceed this order"
+        }
+        
+        if(unavailable_items.length > 0){
+            res.status(400).json({
+                "message":"Some items are not available in the warehouse. So cannot proceed this order",
+                "unavailable_items": unavailable_items
             });
             return;
         }
@@ -69,6 +85,18 @@ const createOrder = async (req: Request, res: Response): Promise<void> =>{
                 status: order_status.PENDING_PICKING
             }
         );
+        const messageData = {
+            replenishment_id: replenishment_id,
+            store_id: store_id,
+            required_items: required_items
+        }
+        
+        await createProducer(Topics.api3, [
+            {
+                value: Buffer.from(JSON.stringify(messageData))
+            }
+        ]);
+        
         res.status(201).json({
             "status": order_status.PENDING_PICKING,
             "replenishment_id": replenishment_id,
@@ -86,7 +114,7 @@ const createOrder = async (req: Request, res: Response): Promise<void> =>{
 const shipOrder = async (req: Request, res: Response): Promise<void> =>{
     try{
         const {replenishment_id, store_id, required_items} = req.body as OrderCreationBody;
-        if(!store_id && !required_items && !replenishment_id){
+        if(!store_id || !required_items || !replenishment_id){
             res.status(400).json({"error":"Replenishment ID, Shop ID and Required Items are  required"});
             return;
         }
@@ -100,6 +128,16 @@ const shipOrder = async (req: Request, res: Response): Promise<void> =>{
                 status: order_status.IN_TRANSIT
             }
         );
+        const messageData = {
+            replenishment_id: replenishment_id,
+        }
+        
+        await createProducer(Topics.api4, [
+            {
+                value: Buffer.from(JSON.stringify(messageData))
+            }
+        ]);
+        
         res.status(201).json({
             "status": order_status.IN_TRANSIT,
             replenishment_id: replenishment_id,
